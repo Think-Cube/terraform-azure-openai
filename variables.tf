@@ -1,60 +1,145 @@
-variable "environment" {
-  description = "Defines the environment type for the backend container (e.g., dev, prod, staging)."
-  type        = string
-  default     = "dev"
-}
-
-variable "default_tags" {
-  description = "A map of key-value pairs to tag resources for organization and management."
-  type        = map(any)
-}
-
-variable "region" {
-  description = "The Azure region where resources will be deployed (e.g., 'weu' for West Europe)."
-  type        = string
-  default     = "weu"
-}
-
-variable "resource_group_location" {
-  description = "The Azure region for creating the resource group. Changing this triggers resource recreation."
-  default     = "West Europe"
+variable "name" {
+  description = "The name of the Azure OpenAI (Cognitive Account)."
   type        = string
 }
 
 variable "resource_group_name" {
-  description = "The name of the Azure resource group where resources will be provisioned."
+  description = "The name of the Resource Group where the Cognitive Account should be created."
   type        = string
 }
 
-variable "cognitive_account_name" {
-  description = "The name of the Azure Cognitive Service Account. Changing this triggers resource recreation."
+variable "location" {
+  description = "The Azure Region where the Cognitive Account should be created."
   type        = string
 }
 
-variable "cognitive_account_kind" {
-  description = "The type of Cognitive Service Account to create (e.g., OpenAI, ComputerVision). Changing this triggers resource recreation."
-  type        = string
-  default     = "OpenAI"
-}
-
-variable "cognitive_account_custom_subdomain_name" {
-  description = "Custom subdomain name for the Azure OpenAI Service, if applicable."
-  type        = string
-}
-
-variable "cognitive_account_sku_name" {
-  description = "The pricing tier (SKU) for the Azure OpenAI Service (e.g., S0)."
+variable "sku_name" {
+  description = "The SKU name for the Cognitive Account. Possible values: F0, S0."
   type        = string
   default     = "S0"
 }
 
-variable "cognitive_account_public_network_access_enabled" {
-  description = "Controls whether public network access is enabled for the Azure OpenAI Service."
+variable "custom_subdomain_name" {
+  description = "The subdomain name used for token-based authentication."
+  type        = string
+  default     = null
+}
+
+variable "dynamic_throttling_enabled" {
+  description = "Whether to enable the dynamic throttling for this Cognitive Account."
+  type        = bool
+  default     = null
+}
+
+variable "fqdns" {
+  description = "List of FQDNs allowed for the Cognitive Account."
+  type        = list(string)
+  default     = null
+}
+
+variable "local_auth_enabled" {
+  description = "Whether local authentication methods are enabled for the Cognitive Account."
   type        = bool
   default     = true
 }
 
+variable "metrics_advisor_aad_client_id" {
+  description = "The Azure AD Client ID (Application ID) for the Metrics Advisor."
+  type        = string
+  default     = null
+}
+
+variable "metrics_advisor_aad_tenant_id" {
+  description = "The Azure AD Tenant ID for the Metrics Advisor."
+  type        = string
+  default     = null
+}
+
+variable "metrics_advisor_super_user_name" {
+  description = "The super user of the Metrics Advisor."
+  type        = string
+  default     = null
+}
+
+variable "metrics_advisor_website_name" {
+  description = "The website name of the Metrics Advisor."
+  type        = string
+  default     = null
+}
+
+variable "outbound_network_access_restricted" {
+  description = "Whether outbound network access is restricted for the Cognitive Account."
+  type        = bool
+  default     = null
+}
+
+variable "public_network_access_enabled" {
+  description = "Whether public network access is allowed for this Cognitive Account."
+  type        = bool
+  default     = true
+}
+
+variable "qna_runtime_endpoint" {
+  description = "A URL to link a QnAMaker cognitive account to a QnA runtime."
+  type        = string
+  default     = null
+}
+
+variable "custom_question_answering_search_service_id" {
+  description = "If kind is TextAnalytics, this specifies the ID of the Search service."
+  type        = string
+  default     = null
+}
+
+variable "custom_question_answering_search_service_key" {
+  description = "If kind is TextAnalytics, this specifies the key of the Search service."
+  type        = string
+  default     = null
+  sensitive   = true
+}
+
+variable "customer_managed_key" {
+  description = "A customer managed key block for the Cognitive Account."
+  type = object({
+    key_vault_key_id   = string
+    identity_client_id = optional(string)
+  })
+  default = null
+}
+
+variable "identity" {
+  description = "An identity block for the Cognitive Account."
+  type = object({
+    type         = string
+    identity_ids = optional(list(string))
+  })
+  default = null
+}
+
+variable "network_acls" {
+  description = "Network ACL configuration for the Cognitive Account."
+  type = object({
+    default_action = string
+    ip_rules       = optional(list(string))
+    virtual_network_rules = optional(list(object({
+      subnet_id                            = string
+      ignore_missing_vnet_service_endpoint = optional(bool, false)
+    })))
+  })
+  default = null
+}
+
+variable "storage" {
+  description = "A list of storage blocks for the Cognitive Account."
+  type = list(object({
+    storage_account_id = string
+    identity_client_id = optional(string)
+  }))
+  default = []
+}
+
 variable "deployment" {
+  description = "A map of Cognitive Deployments to create for the Cognitive Account."
   type = map(object({
     name                   = string
     model_format           = string
@@ -65,56 +150,12 @@ variable "deployment" {
     capacity               = optional(number)
     version_upgrade_option = optional(string)
   }))
+  default  = {}
+  nullable = false
+}
+
+variable "tags" {
+  description = "A mapping of tags which should be assigned to the Cognitive Account."
+  type        = map(string)
   default     = {}
-  description = <<-DESCRIPTION
-    Configures Cognitive Services Account deployments with the following attributes:
-      - name: The deployment name. Changing this triggers resource recreation.
-      - model_format: The model format (e.g., OpenAI). Changing this triggers resource recreation.
-      - model_name: The name of the deployment model. Changing this triggers resource recreation.
-      - model_version: The version of the deployment model.
-      - scale_type: The deployment scale type (e.g., Standard). Changing this triggers resource recreation.
-      - rai_policy_name: Optional Responsible AI policy name. Changing this triggers resource recreation.
-      - capacity: Optional Tokens-per-Minute (TPM) capacity, defaults to 1 (1000 tokens/min).
-      - version_upgrade_option: Optional model version upgrade policy (e.g., OnceNewDefaultVersionAvailable, OnceCurrentVersionExpired, NoAutoUpgrade).
-  DESCRIPTION
-  nullable    = false
-}
-
-variable "identity_enabled" {
-  description = "Enables or disables managed identity for the Cognitive Service Account."
-  type        = bool
-  default     = false
-}
-
-variable "identity_type" {
-  description = "Specifies the managed identity type (e.g., SystemAssigned, UserAssigned)."
-  type        = string
-  default     = "SystemAssigned"
-}
-
-variable "network_acls_enabled" {
-  description = "Enables or disables network Access Control Lists (ACLs) for the Cognitive Service Account."
-  type        = bool
-  default     = false
-}
-
-variable "network_acls_default_action" {
-  description = "Sets the default action for network ACLs (e.g., Allow or Deny)."
-  type        = string
-  default     = "Deny"
-}
-
-variable "network_acls_ip_rules" {
-  description = "A list of IP addresses or CIDR blocks allowed in network ACLs."
-  type        = list(string)
-  default     = []
-}
-
-variable "network_acls_virtual_network_rules" {
-  description = "A list of virtual network rules for network ACLs, specifying subnet ID and optional service endpoint settings."
-  type = list(object({
-    subnet_id                            = string
-    ignore_missing_vnet_service_endpoint = optional(bool)
-  }))
-  default = []
 }
