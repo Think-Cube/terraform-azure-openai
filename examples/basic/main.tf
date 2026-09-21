@@ -1,5 +1,5 @@
 module "openai" {
-  source = "github.com/Think-Cube/terraform-azure-openai?ref=v1.0.0"
+  source = "../.."
 
   name                  = "my-openai"
   resource_group_name   = "my-rg"
